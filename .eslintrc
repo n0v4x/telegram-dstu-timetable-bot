@@ -10,6 +10,8 @@
   ],
   "rules": {
     "no-console": "warn",
-    "prettier/prettier": "error"
+    "prettier/prettier": "error",
+    "no-empty": "warn",
+    "@typescript-eslint/no-empty-interface": "warn"
   }
 }

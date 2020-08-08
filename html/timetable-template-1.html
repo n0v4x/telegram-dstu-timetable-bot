@@ -1,0 +1,176 @@
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timetable</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --black: #000;
+        --gray: #aaa;
+        --light-gray: #e9e9e9;
+        --white: #fff;
+
+        --base-font-family: Roboto, sans-serif;
+        --base-fs: 18px;
+
+        --fs-sm: 0.875rem;
+        --fs-md: 1rem;
+        --fs-lg: 1.25rem;
+
+        --line-height-md: 1.5;
+
+        --font-weight-thin: 100;
+        --font-weight-light: 300;
+        --font-weight-regular: 400;
+        --font-weight-black: 900;
+
+        --padding-xs: 0.5rem;
+        --padding-sm: 1rem;
+        --padding-md: 1.25rem;
+        --padding-lg: 1.875rem;
+        --padding-xl: 3rem;
+
+        --cell-padding-x: var(--padding-md);
+        --cell-padding-y: var(--padding-md);
+        --cell-padding-right: var(--padding-xl);
+        --cell-padding: var(--cell-padding-y) var(--cell-padding-right) var(--cell-padding-y) 0;
+
+        --head-color: var(--gray);
+        --head-font-size: 14px;
+
+        --cell-head-font-wegiht: var(--font-weight-regular);
+
+        --cell-box-shadow: 0 1px 0 var(--light-gray);
+        --cell-font-weight: var(--font-weight-regular);
+
+        --group-row-box-shadow: 0 1px 0 var(--black);
+        --group-row-last-box-shadow: 0 1px 0 var(--white);
+
+        --day-fs: var(--fs-lg);
+        --day-font-weight: var(--font-weight-black);
+        --day-padding: var(--padding-sm) var(--padding-xl) var(--padding-sm) 0;
+
+        --head-day-padding: var(--cell-padding-y) var(--cell-padding-x) var(--cell-padding-y) 0;
+
+        --class-number-color: var(--gray);
+        --class-number-padding: var(--cell-padding-y) var(--padding-sm) var(--cell-padding-y)
+          var(--padding-xs);
+
+        --head-class-number-padding: var(--class-number-padding);
+
+        --time-part-font-weight: var(--font-weight-black);
+      }
+
+      html {
+        font-size: var(--base-fs);
+      }
+
+      body {
+        width: max-content;
+        font-family: var(--base-font-family);
+        padding: var(--padding-xl);
+        font-size: var(--base-md);
+        line-height: var(--line-height-md);
+      }
+
+      .timetable {
+        border-collapse: collapse;
+      }
+
+      .timetable__cell {
+        padding: var(--cell-padding);
+        box-shadow: var(--cell-box-shadow);
+        vertical-align: top;
+        z-index: -1;
+        position: relative;
+        font-weight: var(--cell-font-weight);
+      }
+
+      .timetable__head-cell {
+        color: var(--head-color);
+        font-size: var(--head-font-size);
+        font-weight: var(--cell-head-font-wegiht);
+      }
+
+      .timetable__group-row {
+        box-shadow: var(--group-row-box-shadow);
+      }
+
+      .timetable__body .timetable__group-row:last-child {
+        box-shadow: var(--group-row-last-box-shadow);
+      }
+
+      .timetable__day {
+        padding: var(--day-padding);
+        font-size: var(--day-fs);
+        font-weight: var(--day-font-weight);
+      }
+
+      .timetable__head-day {
+        padding: var(--head-day-padding);
+      }
+
+      .timetable__audience {
+        white-space: nowrap;
+      }
+
+      .timetable__class-number {
+        color: var(--class-number-color);
+        padding: var(--class-number-padding);
+      }
+
+      .timetable__head-class-number {
+        padding: var(--head-class-number-padding);
+      }
+
+      .timetable__time {
+        white-space: nowrap;
+      }
+
+      .timetable__time-part {
+        font-weight: var(--time-part-font-weight);
+      }
+    </style>
+  </head>
+  <body>
+    <table class="timetable">
+      <thead class="timetable__head">
+        <tr class="timetable__row timetable__group-row">
+          <td class="timetable__cell timetable__head-day timetable__head-cell">
+            <div class="timetable__cell-inner"></div>
+          </td>
+          <td class="timetable__cell timetable__head-class-number timetable__head-cell">
+            <div class="timetable__cell-inner">
+              #
+            </div>
+          </td>
+          <td class="timetable__cell timetable__head-cell">
+            <div class="timetable__cell-inner">
+              Время
+            </div>
+          </td>
+          <td class="timetable__cell timetable__head-cell">
+            <div class="timetable__cell-inner">
+              Предмет
+            </div>
+          </td>
+          <td class="timetable__cell timetable__head-cell">
+            <div class="timetable__cell-inner">
+              Аудитория
+            </div>
+          </td>
+          <td class="timetable__cell timetable__head-cell">
+            <div class="timetable__cell-inner">
+              Преподаватель
+            </div>
+          </td>
+        </tr>
+      </thead>
+      <tbody id="insert" class="timetable__body"></tbody>
+    </table>
+  </body>
+</html>
