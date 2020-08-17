@@ -7,7 +7,7 @@
     "dev": "nodemon",
     "copy-html": "cp -R ./src/html ./build/",
     "build": "rimraf ./build && tsc && npm run copy-html",
-    "heroku-postbuild": "npm run build",
+    "postinstall": "tsc",
     "test": "npm run build && node build/test.js",
     "start": "npm run build && node build/index.js",
     "lint": "eslint . --ext .ts"
