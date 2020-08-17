@@ -15,7 +15,7 @@ const classesByDaysOfWeekOrDatesToImages = async (
     html: template,
     content: classesByDaysOfWeekOrDates,
     puppeteerArgs: {
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      args: ["--no-sandbox"]
     }
   })) as Buffer[];
 

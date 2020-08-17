@@ -1,7 +1,5 @@
 import { Context, session } from "telegraf";
 import { IncomingMessage } from "telegraf/typings/telegram-types";
-import DstuApi from "../services/DstuApi";
-import { Group, GroupList } from "../lib/parsers/DstuGroupListParser";
 import { Timetable } from "../lib/parsers/DstuTimetableParser";
 
 export const timetable = () => async (
