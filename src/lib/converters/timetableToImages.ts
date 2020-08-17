@@ -13,7 +13,10 @@ const classesByDaysOfWeekOrDatesToImages = async (
 ): Promise<Buffer[]> => {
   const result = (await nodeHtmlToImage({
     html: template,
-    content: classesByDaysOfWeekOrDates
+    content: classesByDaysOfWeekOrDates,
+    puppeteerArgs: {
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    }
   })) as Buffer[];
 
   return result;
