@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon",
-    "tsc": "tsc",
     "copy-html": "cp -R ./src/html ./build/",
-    "build": "rimraf ./build && npm run tsc && npm run copy-html",
+    "build": "rimraf ./build && tsc && npm run copy-html",
+    "heroku-postbuild": "npm run build",
     "test": "npm run build && node build/test.js",
     "start": "npm run build && node build/index.js",
     "lint": "eslint . --ext .ts"
