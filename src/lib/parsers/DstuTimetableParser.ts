@@ -12,41 +12,53 @@ export interface TimetableInfo {
 
 export interface Timetable {
   info: TimetableInfo;
-  data: TimetableByDaysAndTimes[];
+  data: ClassesByDaysOfWeekAndDates;
 }
 
-export interface TimetableTime {
-  from: string;
-  to: string;
+export interface Time {
+  hours: string;
+  minutes: string;
 }
 
-export interface TimetableClass {
+export interface ClassDuration {
+  from: Time;
+  to: Time;
+}
+
+export interface Class {
   name: string;
   professor: string;
   audience: string;
 }
 
-export interface TimetableByDaysAndTimes {
+export interface ClassesByDayAndTime {
   day: string;
-  data: TimetableByTimes[];
+  total: number;
+  data: ClassesByTime[];
 }
 
-export interface TimetableByTimes {
-  time: TimetableTime;
-  data: TimetableClass[];
+export interface ClassesByTime {
+  number: number;
+  time: ClassDuration;
+  classes: Class[];
 }
 
-export interface TableDataByDaysAndTimes {
+export interface ClassesByDaysOfWeekAndDates {
+  classesByDaysOfWeek: ClassesByDayAndTime[];
+  classesByDates: ClassesByDayAndTime[];
+}
+
+export interface TableDataByDayAndTimes {
   day: string;
-  data: TableDataByTimes[];
+  data: TableDataByTime[];
 }
 
-export interface TableDataByDays {
+export interface TableDataByDay {
   day: string;
   data: TableCellData[][];
 }
 
-export interface TableDataByTimes {
+export interface TableDataByTime {
   time: string;
   data: TableCellData[][];
 }
@@ -55,7 +67,8 @@ enum DstuTimetableSelectors {
   table = "table.dxgvTable_MaterialCompact",
   infoContainer = "#ctl00_MainContent_Table1",
   groupContianer = "#ctl00_MainContent_hpGroup",
-  semesterInput = "input[name='ctl00$MainContent$cbSem']",
+  semesterNameInput = "input[name='ctl00$MainContent$cbSem']",
+  semesterNumberInput = "input[name='ctl00_MainContent_cbSem_VI']",
   yearContainer = "#ctl00_MainContent_lbCurYear",
   currentWeekContainer = "#ctl00_MainContent_lbCurWeek",
   weekType = "input[name='ctl00$MainContent$cmbTypeView']"
@@ -69,26 +82,32 @@ export default class DstuTimetableParser extends BaseParser {
   }
 
   private _normalizeClassAudience(str: string): string {
-    return normalizeString(str.replace(/ауд\./, ""));
+    return normalizeString(str);
   }
 
   private _normalizeClassProfessor(str: string): string {
     return normalizeString(str);
   }
 
-  private _normalizeTimetableTime(str: string): string {
-    return normalizeString(str.replace("-", ":"));
+  private _normalizeClassTime(str: string): Time {
+    const [hours, minutes] = str.split("-");
+    const result: Time = {
+      hours,
+      minutes
+    };
+
+    return result;
   }
 
-  private _tableDataByDaysAndTimesToTimetableByDaysAndTimes(
-    tableDataByDaysAndTimes: TableDataByDaysAndTimes[]
-  ): TimetableByDaysAndTimes[] {
+  private _classesByDayAndTime(
+    tableDataByDaysAndTimes: TableDataByDayAndTimes[]
+  ): ClassesByDayAndTime[] {
     const result = tableDataByDaysAndTimes.map(({ day, data }) => {
-      const timetableByDaysAndTimes = data.map(({ time, data }) => {
+      const timetableByDaysAndTimes = data.map(({ time, data }, i) => {
         const timetableByTimes = data.map(([rawName, rawProfessorAndAudience]) => {
           const [professor, audience] = rawProfessorAndAudience.value.split("<br>");
 
-          const timetableClass: TimetableClass = {
+          const timetableClass: Class = {
             name: this._normalizeClassName(rawName.value),
             audience: this._normalizeClassAudience(audience),
             professor: this._normalizeClassProfessor(professor)
@@ -98,21 +117,27 @@ export default class DstuTimetableParser extends BaseParser {
         });
         const [from, to] = time.split("<br>");
 
-        const timetableTime: TimetableTime = {
-          from: this._normalizeTimetableTime(from),
-          to: this._normalizeTimetableTime(to)
+        const timetableTime: ClassDuration = {
+          from: this._normalizeClassTime(from),
+          to: this._normalizeClassTime(to)
         };
 
-        return {
+        const result: ClassesByTime = {
+          number: i + 1,
           time: timetableTime,
-          data: timetableByTimes
-        } as TimetableByTimes;
+          classes: timetableByTimes
+        };
+
+        return result;
       });
 
-      return {
+      const result: ClassesByDayAndTime = {
+        total: timetableByDaysAndTimes.length,
         day,
         data: timetableByDaysAndTimes
-      } as TimetableByDaysAndTimes;
+      };
+
+      return result;
     });
 
     return result;
@@ -125,12 +150,12 @@ export default class DstuTimetableParser extends BaseParser {
     });
   }
 
-  private _splitTableDataByDaysAndTimes(tableData: TableData): TableDataByDaysAndTimes[] {
-    const result: TableDataByDaysAndTimes[] = [];
-    const tableDataByDays = this._splitTableDataByDays(tableData);
+  private _splitTableDataByDayAndTimes(tableData: TableData): TableDataByDayAndTimes[] {
+    const result: TableDataByDayAndTimes[] = [];
+    const tableDataByDays = this._splitTableDataByDay(tableData);
 
     tableDataByDays.forEach(({ day, data }) => {
-      const tableDataByItmes = this._splitTableDataByTimes(data);
+      const tableDataByItmes = this._splitTableDataByTime(data);
 
       result.push({
         day,
@@ -141,18 +166,17 @@ export default class DstuTimetableParser extends BaseParser {
     return result;
   }
 
-  private _isTimetableTime(str: string): boolean {
-    return /\d{1,2}-\d{1,2}<br>\d{1,2}-\d{1,2}/.test(str);
+  private hasTime(str: string): boolean {
+    return /\s*\d{1,2}-\d{1,2}\s*<br>\s*\d{1,2}-\d{1,2}\s*/.test(str);
   }
 
-  private _splitTableDataByTimes(tableData: TableCellData[][]): TableDataByTimes[] {
-    const result: TableDataByTimes[] = [];
-    let tableDataByTimes: TableDataByTimes;
-
+  private _splitTableDataByTime(tableData: TableCellData[][]): TableDataByTime[] {
+    const result: TableDataByTime[] = [];
+    let tableDataByTimes: TableDataByTime;
     tableData.forEach((data) => {
-      if (data.length >= 3 && this._isTimetableTime(data[0].value)) {
+      if (data.length >= 3 && this.hasTime(data[0].value)) {
         const timeRow = data[0];
-        const newTableDataByTimes: TableDataByTimes = {
+        const newTableDataByTime: TableDataByTime = {
           time: timeRow.value,
           data: [data.slice(1)]
         };
@@ -162,9 +186,9 @@ export default class DstuTimetableParser extends BaseParser {
             result.push(tableDataByTimes);
           }
 
-          tableDataByTimes = newTableDataByTimes;
+          tableDataByTimes = newTableDataByTime;
         } else {
-          result.push(newTableDataByTimes);
+          result.push(newTableDataByTime);
         }
       } else {
         tableDataByTimes.data.push(data);
@@ -174,9 +198,9 @@ export default class DstuTimetableParser extends BaseParser {
     return result;
   }
 
-  private _splitTableDataByDays(tableData: TableCellData[][]): TableDataByDays[] {
-    const result: TableDataByDays[] = [];
-    let tableDataByDaysAndTimes: TableDataByDays;
+  private _splitTableDataByDay(tableData: TableCellData[][]): TableDataByDay[] {
+    const result: TableDataByDay[] = [];
+    let tableDataByDaysAndTimes: TableDataByDay;
 
     tableData.forEach((data) => {
       if (data.length === 1 && data[0].colspan && data[0].colspan === 3) {
@@ -196,14 +220,46 @@ export default class DstuTimetableParser extends BaseParser {
     return result;
   }
 
+  private _isDate(str: string): boolean {
+    return /\d{1,2}\.\d{1,2}\.\d{4}/.test(str);
+  }
+
+  private _splitClassesByDaysOfWeekAndDates(
+    classesByDayAndTime: ClassesByDayAndTime[]
+  ): ClassesByDaysOfWeekAndDates {
+    const result: ClassesByDaysOfWeekAndDates = classesByDayAndTime.reduce(
+      (acc, curr) => {
+        if (this._isDate(curr.day)) {
+          acc.classesByDates.push(curr);
+        } else {
+          acc.classesByDaysOfWeek.push(curr);
+        }
+
+        return acc;
+      },
+      {
+        classesByDaysOfWeek: [],
+        classesByDates: []
+      } as ClassesByDaysOfWeekAndDates
+    );
+
+    return result;
+  }
+
   private _parseTimetableInfo($: CheerioStatic): TimetableInfo {
     const infoContainer = $(DstuTimetableSelectors.infoContainer);
     const group = infoContainer.find(DstuTimetableSelectors.groupContianer).text() || "";
-    const semester = infoContainer.find(DstuTimetableSelectors.semesterInput).val() || "";
     const year = infoContainer.find(DstuTimetableSelectors.yearContainer).text() || "";
     const currentWeek =
-      infoContainer.find(DstuTimetableSelectors.currentWeekContainer).text() || "";
+      infoContainer
+        .find(DstuTimetableSelectors.currentWeekContainer)
+        .text()
+        .replace(" неделя", "") || "";
     const weekType = infoContainer.find(DstuTimetableSelectors.weekType).val() || "";
+    const semesterName = infoContainer.find(DstuTimetableSelectors.semesterNameInput).val() || "";
+    const semesterNumber =
+      infoContainer.find(DstuTimetableSelectors.semesterNumberInput).val() || "";
+    const semester = `${semesterNumber} (${semesterName})`;
 
     const result: TimetableInfo = {
       group,
@@ -216,15 +272,16 @@ export default class DstuTimetableParser extends BaseParser {
     return result;
   }
 
-  private _parseTimetableData($: CheerioStatic): TimetableByDaysAndTimes[] {
+  private _parseTimetableData($: CheerioStatic): ClassesByDaysOfWeekAndDates {
     const table = $(DstuTimetableSelectors.table);
     const tableData: TableData = this._parseTableData($, table);
-    const tableDataByDaysAndTimes = this._splitTableDataByDaysAndTimes(tableData);
-    const timetableByDaysAndTimes = this._tableDataByDaysAndTimesToTimetableByDaysAndTimes(
-      tableDataByDaysAndTimes
+    const tableDataByDaysAndTimes = this._splitTableDataByDayAndTimes(tableData);
+    const classesByDaysAndTimes = this._classesByDayAndTime(tableDataByDaysAndTimes);
+    const classesByDaysOfWeekAndDates = this._splitClassesByDaysOfWeekAndDates(
+      classesByDaysAndTimes
     );
 
-    return timetableByDaysAndTimes;
+    return classesByDaysOfWeekAndDates;
   }
 
   private _parseTimetable($: CheerioStatic): Timetable {

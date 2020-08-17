@@ -2,51 +2,41 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-import Bot from "./lib/Bot";
-import DSTUApi, { Semester } from "./lib/DstuApi";
-import timetableToHtml from "./lib/converters/timetableToHtml";
-import { htmlToImage } from "./lib/common/html";
+import Telegraf, { Context } from "telegraf";
+import { validGroupName } from "./middlewares/validGroupName";
+import { group } from "./middlewares/group";
+import { timetable } from "./middlewares/timetable";
+import { dstuApi } from "./middlewares/dstuApi";
+import { imagesToMediaGroup } from "./lib/converters/imagesToMediaGroup";
+import { timetableImages } from "./middlewares/timetableImages";
 
-const token = process.env.TELEGRAM_API_TOKEN || "";
-const bot = new Bot(token, { polling: true });
+const API_TOKEN = process.env.TELEGRAM_API_TOKEN || "";
+const PORT = +(process.env.PORT || 3000);
+const HEROKU_URL = process.env.HEROKU_URL || "https://your-heroku-app.herokuapp.com";
 
-const dstuApi = new DSTUApi();
+const bot = new Telegraf(API_TOKEN);
 
-const GROUP_NAME_MIN_LEN = 3;
-const GROUP_NAME_MAX_LEN = 10;
+bot.use(dstuApi());
+bot.use(validGroupName());
+bot.use(group());
+bot.use(timetable());
+bot.use(timetableImages());
 
-bot.onText(async ({ text = "", chat }) => {
-  if (text.length < GROUP_NAME_MIN_LEN) {
-    bot.sendMarkdown(chat.id, `Минимальное кол-во символов: *${GROUP_NAME_MIN_LEN}*`);
-  } else if (text.length > GROUP_NAME_MAX_LEN) {
-    bot.sendMarkdown(chat.id, `Максимальное кол-во символов: *${GROUP_NAME_MAX_LEN}*`);
-  } else {
-    try {
-      bot.sendMsg(chat.id, "⏳ Поиск группы...");
+bot.start(async (ctx: Context) => {
+  ctx.reply("Отправьте название группы.\nНапример: АА11");
+});
 
-      const groupInfo = await dstuApi.findGroup({
-        group: text,
-        year: "2019-2020",
-        semester: Semester.Spring
-      });
-      const group = groupInfo.groups[0];
-      console.log(groupInfo);
-      if (group && group.name.toLowerCase() === text.toLowerCase()) {
-        bot.sendMsg(chat.id, "⏳ Поиск расписания...");
-        const timetable = await dstuApi.timetable({ groupId: group.id, week: "49" });
-        console.log(timetable.info);
-        bot.sendMsg(chat.id, "⏳ Генерация расписания...");
-        const timetableHtml = timetableToHtml(timetable);
-        const image = await htmlToImage(timetableHtml);
-        bot.sendPhoto(chat.id, image, { caption: group.name });
-      } else {
-        bot.sendMsg(chat.id, "Группа не найдена");
-      }
-    } catch (e) {
-      bot.sendMsg(
-        chat.id,
-        "Не удалось получить расписание\n Возможные причины: сайт ДГТУ не доступен"
-      );
-    }
+bot.on("text", async (ctx: Context) => {
+  const { timetableImages } = ctx.state;
+
+  if (timetableImages.timetableByDaysOfWeek.length) {
+    ctx.replyWithMediaGroup(imagesToMediaGroup(timetableImages.timetableByDaysOfWeek));
+  }
+
+  if (timetableImages.timetableByDates.length) {
+    ctx.replyWithMediaGroup(imagesToMediaGroup(timetableImages.timetableByDates));
   }
 });
+
+bot.telegram.setWebhook(`${HEROKU_URL}/bot${API_TOKEN}`);
+bot.startWebhook(`/bot${API_TOKEN}`, null, PORT);

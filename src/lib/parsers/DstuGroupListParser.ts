@@ -16,7 +16,7 @@ export interface Group {
   course: number | null;
 }
 
-export interface GroupInfo {
+export interface GroupList {
   year: string;
   semester: Semester;
   currentWeek: string;
@@ -67,7 +67,7 @@ export default class DstuGroupListParser extends BaseParser {
     return result;
   }
 
-  private _parseGroupInfo($: CheerioStatic): GroupInfo {
+  private _parseGroupList($: CheerioStatic): GroupList {
     const year = $("select[name='ctl00$MainContent$cmbYears'] > option[selected]").val();
     const semesterContainer = $("select[name='ctl00$MainContent$cmbSem'] > option[selected]");
     const semester: Semester = {
@@ -77,7 +77,7 @@ export default class DstuGroupListParser extends BaseParser {
     const rawCurrentWeek = $("#ctl00_MainContent_lbCurWeek").text().split("-");
     const currentWeek = rawCurrentWeek[1] ? rawCurrentWeek[1].trim() : "";
     const groups: Group[] = this._parseGroups($);
-    const result: GroupInfo = {
+    const result: GroupList = {
       year,
       semester,
       currentWeek,
@@ -87,9 +87,9 @@ export default class DstuGroupListParser extends BaseParser {
     return result;
   }
 
-  public parse(html: string): GroupInfo {
+  public parse(html: string): GroupList {
     const $ = this._loadHtml(html);
-    const result: GroupInfo = this._parseGroupInfo($);
+    const result: GroupList = this._parseGroupList($);
 
     return result;
   }

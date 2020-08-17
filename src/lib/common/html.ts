@@ -1,13 +1,3 @@
-import nodeHtmlToImage from "node-html-to-image";
-
-export const htmlToImage = async (html: string): Promise<Buffer> => {
-  const result = (await nodeHtmlToImage({
-    html
-  })) as Buffer;
-
-  return result;
-};
-
 export type HtmlAttributeValue = string | string[] | number | number[] | undefined;
 export type HtmlChildren = string | number | string[] | number[];
 

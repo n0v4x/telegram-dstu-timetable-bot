@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timetable</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <style>
+    :root {
+      --black: #000;
+      --gray: #919191;
+      --light-gray: #e9e9e9;
+      --white: #fff;
+
+      --base-font-family: Roboto, sans-serif;
+
+      --fs-base: 16px;
+
+      --fs-sm: 1rem;
+      --fs-md: 1.125rem;
+      --fs-md-1: 1.25rem;
+      --fs-lg: 1.5rem; /* 24 / 16 */
+      --fs-xl: 1.75rem; /* 28 / 16 */
+      --fs-xxl: 2.5rem;
+
+      --line-height-md: 1.3;
+
+      --font-weight-thin: 100;
+      --font-weight-light: 300;
+      --font-weight-regular: 400;
+      --font-weight-bold: 600;
+      --font-weight-black: 900;
+
+      --padding-xs: 0.625rem;
+      --padding-sm: 0.9375rem;
+      --padding-md: 1.25rem; /* 20 / 16 */
+      --padding-lg: 1.875rem;
+      --padding-xl: 2.5rem; /* 40 / 16 */
+      --padding-xxl: 3rem;
+
+      --margin-xxxs: 0.125rem;
+      --margin-xxs: 0.375rem;
+      --margin-xs: 0.625rem;
+      --margin-sm: 0.9375rem;
+      --margin-md: 1.25rem;
+
+      --border-radius-lg: 1.25rem;
+
+      --border-base: 1px solid var(--light-gray);
+
+      --body-font-size: var(--fs-md);
+      --body-font-family: var(--base-font-family);
+      --body-padding: var(--padding-lg);
+      --body-line-height: var(--line-height-md);
+
+      --timetable-gap: 30px;
+
+      --card-padding: var(--padding-xl);
+      --card-border-radius: var(--border-radius-lg);
+      --card-border: var(--border-base);
+
+      --title-day-fs: var(--fs-xxl);
+      --title-day-font-weight: var(--font-weight-black);
+      --title-week-fs: var(--fs-lg);
+      --title-week-margin-bottom: var(--margin-xs);
+
+      --class-margin-bottom: var(--timetable-gap);
+      --class-counter-fs: var(--fs-md);
+      --class-counter-color: var(--gray);
+
+      --class-children-margin-bottom: var(--margin-sm);
+
+      --time-font-weight: var(--font-weight-bold);
+      --time-hours-fs: var(--fs-xl);
+      --time-hours-margin-right: var(--margin-xxxs);
+      --time-minutes-fs: var(--fs-md);
+
+      --dash-width: 1.25rem;
+      --dash-height: 1px;
+      --dash-color: var(--black);
+      --dash-margin-x: var(--margin-xxs);
+
+      --class-subject-fs: var(--fs-md-1);
+      --class-subject-line-height: var(--line-height-md);
+
+      --class-audience-and-professor-fs: var(--fs-md);
+      --class-audience-and-professor-color: var(--gray);
+      --class-audience-and-professor-line-height: var(--line-height-md);
+      --class-audience-margin-right: var(--margin-md);
+
+      --detail-caption-color: var(--gray);
+      --detail-caption-fs: var(--fs-sm);
+      --detail-caption-margin-bottom: var(--margin-sm);
+
+      --detail-summary-fs: var(--fs-md);
+    }
+
+    *,
+    *:after,
+    *:before {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      line-height: 100%;
+    }
+
+    html {
+      font-size: var(--fs-base);
+    }
+
+    body {
+      width: max-content;
+      font-family: var(--body-font-family);
+      padding: var(--body-padding);
+    }
+
+    .card {
+      padding: var(--card-padding);
+      border: var(--card-border);
+      border-radius: var(--card-border-radius);
+    }
+
+    .timetable {
+      display: grid;
+      grid-template-columns: minmax(auto, 560px) 240px;
+      grid-template-rows: auto;
+      grid-gap: 30px;
+      grid-template-areas:
+        "header sidebar"
+        "main sidebar";
+    }
+
+    .timetable__header {
+      grid-area: header;
+    }
+
+    .timetable__main {
+      grid-area: main;
+    }
+
+    .timetable__sidebar {
+      grid-area: sidebar;
+    }
+
+    .title__week {
+      font-size: var(--title-week-fs);
+      margin-bottom: var(--title-week-margin-bottom);
+    }
+
+    .title__day {
+      font-size: var(--title-day-fs);
+      font-weight: var(--title-day-font-weight);
+    }
+
+    .classes {
+      list-style: none;
+    }
+
+    .class:not(:last-child) {
+      margin-bottom: var(--class-margin-bottom);
+    }
+
+    .class__counter {
+      font-size: var(--class-counter-fs);
+      color: var(--class-counter-color);
+    }
+
+    .class__time {
+      display: inline-block;
+    }
+
+    .time {
+      display: inline-block;
+      font-weight: var(--time-font-weight);
+    }
+
+    .time__hours {
+      font-size: var(--time-hours-fs);
+      display: inline-block;
+    }
+
+    .time__minutes {
+      font-size: var(--time-minutes-fs);
+      vertical-align: top;
+      display: inline-block;
+    }
+
+    .dash {
+      display: inline-block;
+      background-color: var(--dash-color);
+      width: var(--dash-width);
+      height: var(--dash-height);
+      vertical-align: super;
+      margin: 0 var(--dash-margin-x);
+    }
+
+    .class__subject {
+      font-size: var(--class-subject-fs);
+      line-height: var(--class-subject-line-height);
+    }
+
+    .class__audience-and-professor {
+      display: flex;
+      font-size: var(--class-audience-and-professor-fs);
+      color: var(--class-audience-and-professor-color);
+      line-height: var(--class-audience-and-professor-line-height);
+    }
+
+    .class > *:not(:last-child) {
+      margin-bottom: var(--class-children-margin-bottom);
+    }
+
+    .class__audience {
+      white-space: nowrap;
+      margin-right: var(--class-audience-margin-right);
+    }
+
+    .class__audience,
+    .class__professor {
+      line-height: inherit;
+    }
+
+    .timetable__sidebar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .detailes {
+      list-style: none;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      max-height: 500px;
+    }
+
+    .detail__caption {
+      font-size: var(--detail-caption-fs);
+      color: var(--detail-caption-color);
+      margin-bottom: var(--detail-caption-margin-bottom);
+    }
+
+    .detail__summary {
+      font-size: var(--detail-summary-fs);
+    }
+  </style>
+  <html>
+    <body>
+      <div class="timetable">
+        <header class="timetable__header card">
+          <div class="title">
+            {{#if info.weekType}}
+            <p class="title__week">
+              {{info.weekType}}
+            </p>
+            {{/if}}
+            <h1 class="title__day">
+              {{timetable.day}}
+            </h1>
+          </div>
+        </header>
+        <main class="timetable__main">
+          <ul class="classes">
+            {{#each timetable.data}}
+            <li class="class card">
+              <p class="class__counter">{{this.number}} / {{@root.timetable.total}}</p>
+              <p class="class__time">
+                <time class="time">
+                  <span class="time__hours">{{this.time.from.hours}}</span>
+                  <span class="time__minutes">{{this.time.from.minutes}}</span>
+                </time>
+                <span class="dash"></span>
+                <time class="time">
+                  <span class="time__hours">{{this.time.to.hours}}</span>
+                  <span class="time__minutes">{{this.time.to.minutes}}</span>
+                </time>
+              </p>
+              {{#each this.classes}}
+              <p class="class__subject">
+                {{this.name}}
+              </p>
+              <div class="class__audience-and-professor">
+                <p class="class__audience">
+                  {{this.audience}}
+                </p>
+                <p class="class__professor">
+                  {{this.professor}}
+                </p>
+              </div>
+              {{/each}}
+            </li>
+            {{else}}
+            <li class="class class_empty card"></li>
+            {{/each}}
+            <!-- <li class="class card">
+              <p class="class__counter">1 / 3</p>
+              <p class="class__time">
+                <time class="time">
+                  <span class="time__hours">10</span>
+                  <span class="time__minutes">15</span>
+                </time>
+                <span class="dash"></span>
+                <time class="time">
+                  <span class="time__hours">11</span>
+                  <span class="time__minutes">50</span>
+                </time>
+              </p>
+              <p class="class__subject">
+                пр. Иностранный язык, Английский
+              </p>
+              <div class="class__audience-and-professor">
+                <p class="class__audience">
+                  1-130
+                </p>
+                <p class="class__professor">
+                  Яровая О.В.
+                </p>
+              </div>
+            </li> -->
+          </ul>
+        </main>
+        <aside class="timetable__sidebar card">
+          <ul class="detailes">
+            <li class="detail">
+              <p class="detail__caption">
+                Группа
+              </p>
+              <p class="detail__summary">
+                {{info.group}}
+              </p>
+            </li>
+            <li class="detail">
+              <p class="detail__caption">
+                Неделя
+              </p>
+              <p class="detail__summary">
+                {{info.currentWeek}}
+              </p>
+            </li>
+            <li class="detail">
+              <p class="detail__caption">
+                Семестр
+              </p>
+              <p class="detail__summary">
+                {{info.semester}}
+              </p>
+            </li>
+            <li class="detail">
+              <p class="detail__caption">
+                Год
+              </p>
+              <p class="detail__summary">
+                {{info.year}}
+              </p>
+            </li>
+            <!-- <li class="detail">
+              <p class="detail__caption">
+                Актуальность
+              </p>
+              <p class="detail__summary">
+                {{relevance}}
+              </p>
+            </li> -->
+          </ul>
+        </aside>
+      </div>
+    </body>
+  </html>
+</html>

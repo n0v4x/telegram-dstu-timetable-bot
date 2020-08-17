@@ -2,9 +2,9 @@ import axios, { AxiosInstance } from "axios";
 import iconv from "iconv-lite";
 import qs from "query-string";
 import axiosCookieJarSupport from "axios-cookiejar-support";
-import AspNetFormParser, { AspNetForm } from "./parsers/AspNetFormParser";
-import DstuGroupInfoParser, { GroupInfo } from "./parsers/DstuGroupListParser";
-import DstuTimetableParser, { Timetable } from "./parsers/DstuTimetableParser";
+import AspNetFormParser, { AspNetForm } from "../lib/parsers/AspNetFormParser";
+import DstuGroupInfoParser, { GroupList } from "../lib/parsers/DstuGroupListParser";
+import DstuTimetableParser, { Timetable } from "../lib/parsers/DstuTimetableParser";
 import { CookieJar } from "tough-cookie";
 
 interface DstuAspNetForm extends AspNetForm {
@@ -18,6 +18,8 @@ interface DstuAspNetForm extends AspNetForm {
   ctl00$MainContent$cbSem?: "";
 }
 
+export type GroupId = string | number;
+
 export enum WeekType {
   Both = 0,
   Upper = 1,
@@ -30,7 +32,7 @@ export enum Semester {
 }
 
 export interface TimetableOptions {
-  groupId: string;
+  groupId: GroupId;
   weekType?: WeekType;
   week?: string;
   semester?: Semester;
@@ -43,21 +45,20 @@ export interface FindGroupOptions {
 }
 
 export default class DstuApi {
-  private static _baseUrl = "https://edu.donstu.ru";
-  private static _groupInfoUrl = `${DstuApi._baseUrl}/Rasp/`;
-  private static _timetableUrl = `${DstuApi._groupInfoUrl}Rasp.aspx`;
-  private static _searchGroupCookieName =
+  private static readonly _baseUrl = "https://edu.donstu.ru";
+  private static readonly _groupInfoUrl = `${DstuApi._baseUrl}/Rasp/`;
+  private static readonly _timetableUrl = `${DstuApi._groupInfoUrl}Rasp.aspx`;
+  private static readonly _searchGroupCookieName =
     "rasp_default_aspx_ctl00_MainContent_ASPxPageControl1_grGroup";
-  private static _aspNetFormDataParser: AspNetFormParser = new AspNetFormParser();
-  private static _dstuGroupInfoParser: DstuGroupInfoParser = new DstuGroupInfoParser();
-  private static _dstuTimeTableParser: DstuTimetableParser = new DstuTimetableParser();
-  private static _filterBase = 23;
+  private static readonly _aspNetFormDataParser: AspNetFormParser = new AspNetFormParser();
+  private static readonly _dstuGroupInfoParser: DstuGroupInfoParser = new DstuGroupInfoParser();
+  private static readonly _dstuTimeTableParser: DstuTimetableParser = new DstuTimetableParser();
+  private static readonly _filterBase = 23;
   private _request: AxiosInstance;
   private _cookieJar: CookieJar;
 
   constructor() {
     this._request = axios.create({
-      baseURL: DstuApi._baseUrl,
       timeout: 5000,
       withCredentials: true,
       responseType: "arraybuffer",
@@ -84,7 +85,7 @@ export default class DstuApi {
     this._cookieJar.setCookie(cookie, DstuApi._groupInfoUrl);
   }
 
-  private _buildTimetableUrl(groupId: string): string {
+  private _buildTimetableUrl(groupId: GroupId): string {
     return `${DstuApi._timetableUrl}?group=${groupId}`;
   }
 
@@ -110,7 +111,15 @@ export default class DstuApi {
     return data;
   }
 
-  public async findGroup({ group, year, semester }: FindGroupOptions): Promise<GroupInfo> {
+  public async findGroup(findOptions: FindGroupOptions | string): Promise<GroupList> {
+    if (typeof findOptions === "string") {
+      findOptions = {
+        group: findOptions
+      };
+    }
+
+    const { group, year, semester } = findOptions;
+
     this._setGroupInfoCookie(this._getSearchGroupCookie(group));
 
     let html = await this._fetch(DstuApi._groupInfoUrl);
@@ -124,17 +133,23 @@ export default class DstuApi {
       html = await this._fetchWithAsp(DstuApi._groupInfoUrl, dstuAspNetForm);
     }
 
-    const result: GroupInfo = DstuApi._dstuGroupInfoParser.parse(html);
+    const result: GroupList = DstuApi._dstuGroupInfoParser.parse(html);
 
     return result;
   }
 
-  public async timetable({
-    groupId,
-    weekType,
-    week,
-    semester
-  }: TimetableOptions): Promise<Timetable> {
+  private _isGroupId(groupId: GroupId | any): groupId is GroupId {
+    return typeof groupId === "string" || typeof groupId === "number";
+  }
+
+  public async timetable(timetableOptions: TimetableOptions | GroupId): Promise<Timetable> {
+    if (this._isGroupId(timetableOptions)) {
+      timetableOptions = {
+        groupId: timetableOptions
+      };
+    }
+    const { groupId, weekType, week, semester } = timetableOptions;
+
     const url = this._buildTimetableUrl(groupId);
 
     let html = await this._fetch(url);

@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon",
-    "build": "rimraf ./build && tsc",
+    "copy-html": "cp -R ./src/html ./build/",
+    "build": "rimraf ./build && tsc && npm run copy-html",
     "test": "npm run build && node build/test.js",
-    "start": "npm run build && env NTBA_FIX_350=1 NTBA_FIX_319=1 node build/index.js",
+    "start": "npm run build && node build/index.js",
     "lint": "eslint . --ext .ts"
   },
   "keywords": [],
@@ -46,6 +47,8 @@
     "node-telegram-bot-api": "^0.50.0",
     "query-string": "^6.13.1",
     "querystring": "^0.2.0",
+    "telegraf": "^3.38.0",
+    "telegraf-inline-menu": "^5.0.0",
     "tough-cookie": "^4.0.0"
   }
 }
