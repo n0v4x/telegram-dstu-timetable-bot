@@ -6,7 +6,7 @@ export const timetableImages = () => async (
   ctx: Context,
   next: () => Promise<void>
 ): Promise<IncomingMessage | void> => {
-  ctx.reply("Генерация расписания");
+  ctx.reply("⏳ Генерация расписания");
 
   const { timetable } = ctx.state;
 
