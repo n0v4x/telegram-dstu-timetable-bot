@@ -12,7 +12,7 @@ import { timetableImages } from "./middlewares/timetableImages";
 
 const API_TOKEN = process.env.TELEGRAM_API_TOKEN || "";
 const PORT = +(process.env.PORT || 3000);
-const HEROKU_URL = process.env.HEROKU_URL || "https://your-heroku-app.herokuapp.com";
+const HEROKU_URL = process.env.HEROKU_URL || "https://quiet-stream-13678.herokuapp.com";
 
 const bot = new Telegraf(API_TOKEN);
 
@@ -36,6 +36,10 @@ bot.on("text", async (ctx: Context) => {
   if (timetableImages.timetableByDates.length) {
     ctx.replyWithMediaGroup(imagesToMediaGroup(timetableImages.timetableByDates));
   }
+});
+
+bot.catch((err: Error, ctx: Context) => {
+  console.log(`Ancountered an error for ${ctx.updateType}`, err);
 });
 
 bot.telegram.setWebhook(`${HEROKU_URL}/bot${API_TOKEN}`);
