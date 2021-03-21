@@ -1,29 +1,32 @@
 import { Context } from "telegraf";
 import { IncomingMessage } from "telegraf/typings/telegram-types";
 import { Group, GroupList } from "../lib/parsers/DstuGroupListParser";
+import { IGroup } from "../models/Group";
 
 export const group = () => async (
   ctx: Context,
   next: () => Promise<void>
 ): Promise<IncomingMessage | void> => {
-  let group: Group | null = null;
-  let groupList: GroupList | null = null;
+  const { groupName } = ctx.session;
 
-  try {
-    ctx.reply("🔎 Поиск группы...");
+  // let group: IGroup | null = null;
+  // let groupList: GroupList | null = null;
 
-    groupList = await ctx.dstu.findGroup(ctx.state.groupName);
+  // try {
+  //   ctx.reply("🔎 Поиск группы...");
 
-    group = groupList.groups[0];
-  } catch (e) {
-    return ctx.reply("😞 Неудалось найти группу.\nВозможные причины:\nСайти ДГТУ не доступен.");
-  }
+  //   groupList = await ctx.dstu.findGroup(groupName);
 
-  if (group && group.name.toLowerCase() === ctx.state.groupName.toLowerCase()) {
-    ctx.state.group = group;
-  } else {
-    return ctx.reply("😞 Группа не найдена.");
-  }
+  //   group = groupList.groups[0];
+  // } catch (e) {
+  //   return ctx.reply("😞 Неудалось найти группу.\nВозможные причины:\nСайти ДГТУ не доступен.");
+  // }
+
+  // if (group && group.name.toLowerCase() === groupName.toLowerCase()) {
+  //   ctx.session.group = group;
+  // } else {
+  //   return ctx.reply("😞 Группа не найдена.");
+  // }
 
   return await next();
 };

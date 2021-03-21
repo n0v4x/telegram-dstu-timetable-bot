@@ -21,6 +21,7 @@ interface DstuAspNetForm extends AspNetForm {
 export type GroupId = string | number;
 
 export enum WeekType {
+  Current = -1,
   Both = 0,
   Upper = 1,
   Bottom = 2

@@ -1,4 +1,4 @@
-import { Context, session } from "telegraf";
+import { Context } from "telegraf";
 import { IncomingMessage } from "telegraf/typings/telegram-types";
 import { Timetable } from "../lib/parsers/DstuTimetableParser";
 
@@ -11,7 +11,7 @@ export const timetable = () => async (
   try {
     ctx.reply("🔎 Поиск расписания...");
 
-    timetable = await ctx.dstu.timetable(ctx.state.group.id);
+    timetable = await ctx.dstu.timetable(ctx.session.group.id);
   } catch (e) {
     return ctx.reply("😞 Неудалось найти расписание.\nВозможные причины:\nСайти ДГТУ не доступен.");
   }
@@ -20,7 +20,7 @@ export const timetable = () => async (
     return ctx.reply("😞 Расписание не найдено.");
   }
 
-  ctx.state.timetable = timetable;
+  // ctx.session.timetable = timetable;
 
   return await next();
 };

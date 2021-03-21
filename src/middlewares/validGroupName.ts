@@ -28,7 +28,7 @@ export const validGroupName = () => async (
     );
   }
 
-  ctx.state.groupName = groupName;
+  // ctx.session.search = groupName;
 
   return await next();
 };

@@ -1,6 +1,9 @@
-import { normalizeString } from "../common/string";
+import { normalizeString, addSpaceBetweenDotAndWord } from "../common/string";
 import BaseParser from "./BaseParser";
 import HtmlTableParser, { TableData, TableCellData } from "./HtmlTableParser";
+import { last } from "../common/array";
+import { hoursToMinutes } from "../common/time";
+import { uniq } from "lodash";
 
 export interface TimetableInfo {
   group: string;
@@ -25,10 +28,14 @@ export interface ClassDuration {
   to: Time;
 }
 
+export interface ClassInfo {
+  professors: string[];
+  audience: string;
+}
+
 export interface Class {
   name: string;
-  professor: string;
-  audience: string;
+  info: ClassInfo[];
 }
 
 export interface ClassesByDayAndTime {
@@ -40,15 +47,15 @@ export interface ClassesByDayAndTime {
 export interface ClassesByTime {
   number: number;
   time: ClassDuration;
-  classes: Class[];
+  data: Class[];
 }
 
 export interface ClassesByDaysOfWeekAndDates {
-  classesByDaysOfWeek: ClassesByDayAndTime[];
-  classesByDates: ClassesByDayAndTime[];
+  byDaysOfWeek: ClassesByDayAndTime[];
+  byDates: ClassesByDayAndTime[];
 }
 
-export interface TableDataByDayAndTimes {
+export interface TableDataByDaysAndTimes {
   day: string;
   data: TableDataByTime[];
 }
@@ -63,7 +70,7 @@ export interface TableDataByTime {
   data: TableCellData[][];
 }
 
-enum DstuTimetableSelectors {
+const enum DstuTimetableSelectors {
   table = "table.dxgvTable_MaterialCompact",
   infoContainer = "#ctl00_MainContent_Table1",
   groupContianer = "#ctl00_MainContent_hpGroup",
@@ -86,11 +93,14 @@ export default class DstuTimetableParser extends BaseParser {
   }
 
   private _normalizeClassProfessor(str: string): string {
-    return normalizeString(str);
+    return addSpaceBetweenDotAndWord(normalizeString(str));
   }
 
-  private _normalizeClassTime(str: string): Time {
-    const [hours, minutes] = str.split("-");
+  private _parseTime(str: string): Time {
+    const rawTime = str.split("-");
+    const hours = rawTime[0].trim();
+    const minutes = rawTime[1].trim();
+
     const result: Time = {
       hours,
       minutes
@@ -99,45 +109,106 @@ export default class DstuTimetableParser extends BaseParser {
     return result;
   }
 
-  private _classesByDayAndTime(
-    tableDataByDaysAndTimes: TableDataByDayAndTimes[]
+  private _parseProfessors(rawProfessors: string): string[] {
+    const professors = /,/.test(rawProfessors) ? rawProfessors.split(",") : [rawProfessors];
+    const result = uniq(professors.map((professor) => this._normalizeClassProfessor(professor)));
+
+    return result;
+  }
+
+  private _parseClass = ([rawName, rawProfessorAndAudience]: TableCellData[]): Class => {
+    const [rawProfessors, audience] = rawProfessorAndAudience.value.split("<br>");
+    const name = this._normalizeClassName(rawName.value);
+    const professors = this._parseProfessors(rawProfessors);
+    const info = [
+      {
+        audience: this._normalizeClassAudience(audience),
+        professors
+      }
+    ];
+
+    const result: Class = {
+      name,
+      info
+    };
+
+    return result;
+  };
+
+  private _parseClassDuration = (rawClassDuration: string): ClassDuration => {
+    const [rawFrom, rawTo] = rawClassDuration.split("<br>");
+    const from = this._parseTime(rawFrom);
+    const to = this._parseTime(rawTo);
+
+    const result: ClassDuration = {
+      from,
+      to
+    };
+
+    return result;
+  };
+
+  private _mergeClassesWithSameName = (classes: Class[]): Class[] => {
+    if (classes.length <= 1) return classes;
+
+    const result = classes.reduce((acc, curr) => {
+      if (acc.length) {
+        const lastAddedClass = last(acc);
+
+        if (lastAddedClass && lastAddedClass.name === curr.name) {
+          lastAddedClass.info.push(...curr.info);
+        }
+      } else {
+        acc.push(curr);
+      }
+
+      return acc;
+    }, [] as Class[]);
+
+    return result;
+  };
+
+  private _parseClassesByTime = (
+    { time: rawTime, data: rawData }: TableDataByTime,
+    i: number
+  ): ClassesByTime => {
+    const classes = rawData.map(this._parseClass);
+    const data = this._mergeClassesWithSameName(classes);
+    const time = this._parseClassDuration(rawTime);
+    const number = i + 1;
+
+    const result: ClassesByTime = {
+      number,
+      time,
+      data
+    };
+
+    return result;
+  };
+
+  private _compareByTime({ time: aTime }: ClassesByTime, { time: bTime }: ClassesByTime): number {
+    return (
+      hoursToMinutes(+aTime.from.hours) +
+      +aTime.from.minutes -
+      (hoursToMinutes(+bTime.from.hours) + +bTime.from.minutes)
+    );
+  }
+
+  private _parseClassesByDaysAndTime(
+    tableDataByDaysAndTime: TableDataByDaysAndTimes[]
   ): ClassesByDayAndTime[] {
-    const result = tableDataByDaysAndTimes.map(({ day, data }) => {
-      const timetableByDaysAndTimes = data.map(({ time, data }, i) => {
-        const timetableByTimes = data.map(([rawName, rawProfessorAndAudience]) => {
-          const [professor, audience] = rawProfessorAndAudience.value.split("<br>");
+    const result = tableDataByDaysAndTime.map(({ day: rawDay, data: rawData }) => {
+      const data = rawData.map(this._parseClassesByTime).sort(this._compareByTime);
+      const total = data.length;
+      const day = normalizeString(rawDay);
 
-          const timetableClass: Class = {
-            name: this._normalizeClassName(rawName.value),
-            audience: this._normalizeClassAudience(audience),
-            professor: this._normalizeClassProfessor(professor)
-          };
-
-          return timetableClass;
-        });
-        const [from, to] = time.split("<br>");
-
-        const timetableTime: ClassDuration = {
-          from: this._normalizeClassTime(from),
-          to: this._normalizeClassTime(to)
-        };
-
-        const result: ClassesByTime = {
-          number: i + 1,
-          time: timetableTime,
-          classes: timetableByTimes
-        };
-
-        return result;
-      });
-
-      const result: ClassesByDayAndTime = {
-        total: timetableByDaysAndTimes.length,
+      const classesByDayAndTime: ClassesByDayAndTime = {
+        total,
         day,
-        data: timetableByDaysAndTimes
+        data
       };
 
-      return result;
+      return classesByDayAndTime;
     });
 
     return result;
@@ -150,8 +221,8 @@ export default class DstuTimetableParser extends BaseParser {
     });
   }
 
-  private _splitTableDataByDayAndTimes(tableData: TableData): TableDataByDayAndTimes[] {
-    const result: TableDataByDayAndTimes[] = [];
+  private _splitTableDataByDaysAndTimes(tableData: TableData): TableDataByDaysAndTimes[] {
+    const result: TableDataByDaysAndTimes[] = [];
     const tableDataByDays = this._splitTableDataByDay(tableData);
 
     tableDataByDays.forEach(({ day, data }) => {
@@ -166,56 +237,48 @@ export default class DstuTimetableParser extends BaseParser {
     return result;
   }
 
-  private hasTime(str: string): boolean {
-    return /\s*\d{1,2}-\d{1,2}\s*<br>\s*\d{1,2}-\d{1,2}\s*/.test(str);
+  private _isTime(str: string): boolean {
+    return /\d{1,2}-\d{1,2}\s*<br>\s*\d{1,2}-\d{1,2}/.test(str);
   }
 
   private _splitTableDataByTime(tableData: TableCellData[][]): TableDataByTime[] {
-    const result: TableDataByTime[] = [];
-    let tableDataByTimes: TableDataByTime;
-    tableData.forEach((data) => {
-      if (data.length >= 3 && this.hasTime(data[0].value)) {
-        const timeRow = data[0];
-        const newTableDataByTime: TableDataByTime = {
-          time: timeRow.value,
-          data: [data.slice(1)]
-        };
-
-        if (timeRow.rowspan && timeRow.rowspan >= 2) {
-          if (tableDataByTimes) {
-            result.push(tableDataByTimes);
-          }
-
-          tableDataByTimes = newTableDataByTime;
-        } else {
-          result.push(newTableDataByTime);
-        }
+    const result = tableData.reduce((acc, curr) => {
+      if (curr.length >= 3 && this._isTime(curr[0].value)) {
+        acc.push({
+          time: curr[0].value,
+          data: [curr.slice(1)]
+        });
       } else {
-        tableDataByTimes.data.push(data);
+        const lastAdded = last(acc);
+
+        if (lastAdded) {
+          lastAdded.data.push(curr);
+        }
       }
-    });
+
+      return acc;
+    }, [] as TableDataByTime[]);
 
     return result;
   }
 
   private _splitTableDataByDay(tableData: TableCellData[][]): TableDataByDay[] {
-    const result: TableDataByDay[] = [];
-    let tableDataByDaysAndTimes: TableDataByDay;
-
-    tableData.forEach((data) => {
-      if (data.length === 1 && data[0].colspan && data[0].colspan === 3) {
-        if (tableDataByDaysAndTimes) {
-          result.push(tableDataByDaysAndTimes);
-        }
-
-        tableDataByDaysAndTimes = {
-          day: data[0].value,
+    const result = tableData.reduce((acc, curr) => {
+      if (curr.length === 1 && curr[0].colspan && curr[0].colspan === 3) {
+        acc.push({
+          day: curr[0].value,
           data: []
-        };
+        });
       } else {
-        tableDataByDaysAndTimes.data.push(data);
+        const lastAdded = last(acc);
+
+        if (lastAdded) {
+          lastAdded.data.push(curr);
+        }
       }
-    });
+
+      return acc;
+    }, [] as TableDataByDay[]);
 
     return result;
   }
@@ -230,16 +293,16 @@ export default class DstuTimetableParser extends BaseParser {
     const result: ClassesByDaysOfWeekAndDates = classesByDayAndTime.reduce(
       (acc, curr) => {
         if (this._isDate(curr.day)) {
-          acc.classesByDates.push(curr);
+          acc.byDates.push(curr);
         } else {
-          acc.classesByDaysOfWeek.push(curr);
+          acc.byDaysOfWeek.push(curr);
         }
 
         return acc;
       },
       {
-        classesByDaysOfWeek: [],
-        classesByDates: []
+        byDaysOfWeek: [],
+        byDates: []
       } as ClassesByDaysOfWeekAndDates
     );
 
@@ -275,8 +338,8 @@ export default class DstuTimetableParser extends BaseParser {
   private _parseTimetableData($: CheerioStatic): ClassesByDaysOfWeekAndDates {
     const table = $(DstuTimetableSelectors.table);
     const tableData: TableData = this._parseTableData($, table);
-    const tableDataByDaysAndTimes = this._splitTableDataByDayAndTimes(tableData);
-    const classesByDaysAndTimes = this._classesByDayAndTime(tableDataByDaysAndTimes);
+    const tableDataByDaysAndTime = this._splitTableDataByDaysAndTimes(tableData);
+    const classesByDaysAndTimes = this._parseClassesByDaysAndTime(tableDataByDaysAndTime);
     const classesByDaysOfWeekAndDates = this._splitClassesByDaysOfWeekAndDates(
       classesByDaysAndTimes
     );

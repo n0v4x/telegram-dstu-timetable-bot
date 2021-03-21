@@ -1,64 +1,94 @@
 import qs from "query-string";
 import URL from "url";
 import BaseParser from "./BaseParser";
+import Group, { IGroup } from "../../models/Group";
 
 export interface Semester {
-  number: number | null;
+  number: number;
   name: string;
 }
 
 export interface Group {
-  id: string;
+  id: number;
   name: string;
-  semester: number | null;
+  semester: number;
   specialty: string;
   faculty: string;
-  course: number | null;
+  course: number;
+}
+
+interface GroupIdAndSemester {
+  _id: number;
+  semester: number;
 }
 
 export interface GroupList {
   year: string;
   semester: Semester;
   currentWeek: string;
-  groups: Group[];
+  groups: IGroup[];
+}
+
+const enum GroupListSelectors {
+  table = "table.dxgvTable_MaterialCompact",
+  rows = "tr.dxgvDataRow_MaterialCompact",
+  cols = "td",
+  groupLink = "a.dxeHyperlink_MaterialCompact",
+  year = "select[name='ctl00$MainContent$cmbYears'] > option[selected]",
+  semester = "select[name='ctl00$MainContent$cmbSem'] > option[selected]",
+  currentWeek = "#ctl00_MainContent_lbCurWeek"
 }
 
 export default class DstuGroupListParser extends BaseParser {
-  private _parseGroups($: CheerioStatic): Group[] {
-    const table = $("table.dxgvTable_MaterialCompact");
-    const rows = table.find("tr.dxgvDataRow_MaterialCompact");
-    const result: Group[] = [];
+  private _parseGroupIdAndSemester(aElem: Cheerio): GroupIdAndSemester {
+    const href = aElem.attr("href");
+    const result: GroupIdAndSemester = {
+      _id: -1,
+      semester: -1
+    };
+
+    if (href) {
+      const query = URL.parse(href).query;
+
+      if (query) {
+        const { group: groupId, sem } = qs.parse(query);
+
+        if (typeof groupId === "string") {
+          result._id = parseInt(groupId);
+        }
+
+        if (typeof sem === "string") {
+          result.semester = parseInt(sem);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private _parseGroups($: CheerioStatic): IGroup[] {
+    const table = $(GroupListSelectors.table);
+    const rows = table.find(GroupListSelectors.rows);
+    const result: IGroup[] = [];
 
     if (rows.length) {
       rows.each((_, row) => {
-        const cols = $(row).find("td");
-        const groupHref = $(cols[0]).find("a.dxeHyperlink_MaterialCompact").attr("href");
-        let id = "";
-        let semester = null;
-
-        if (groupHref) {
-          const query = URL.parse(groupHref).query;
-
-          if (query) {
-            const { group: groupId, sem } = qs.parse(query);
-
-            if (typeof groupId === "string") id = groupId;
-            if (typeof sem === "string") semester = parseInt(sem) || null;
-          }
-        }
+        const cols = $(row).find(GroupListSelectors.cols);
+        const idAndSemester = this._parseGroupIdAndSemester(
+          $(cols[0]).find(GroupListSelectors.groupLink)
+        );
 
         const name = $(cols[0]).text();
         const specialty = $(cols[1]).text();
         const faculty = $(cols[2]).text();
-        const course = parseInt($(cols[3]).text()) || null;
-        const group: Group = {
-          id,
-          semester,
+        const course = parseInt($(cols[3]).text());
+        const group: IGroup = new Group({
+          ...idAndSemester,
           name,
           specialty,
           faculty,
           course
-        };
+        });
 
         result.push(group);
       });
@@ -67,16 +97,32 @@ export default class DstuGroupListParser extends BaseParser {
     return result;
   }
 
-  private _parseGroupList($: CheerioStatic): GroupList {
-    const year = $("select[name='ctl00$MainContent$cmbYears'] > option[selected]").val();
-    const semesterContainer = $("select[name='ctl00$MainContent$cmbSem'] > option[selected]");
-    const semester: Semester = {
-      name: semesterContainer.text(),
-      number: parseInt(semesterContainer.val()) || null
+  private _parseSemester($: CheerioStatic): Semester {
+    const semesterElem = $(GroupListSelectors.semester);
+    const name = semesterElem.text();
+    const number = parseInt(semesterElem.val());
+
+    const result: Semester = {
+      name,
+      number
     };
-    const rawCurrentWeek = $("#ctl00_MainContent_lbCurWeek").text().split("-");
-    const currentWeek = rawCurrentWeek[1] ? rawCurrentWeek[1].trim() : "";
-    const groups: Group[] = this._parseGroups($);
+
+    return result;
+  }
+
+  private _parseCurrentWeek($: CheerioStatic): string {
+    const currentWeekElem = $(GroupListSelectors.currentWeek);
+    const rawCurrentWeek = currentWeekElem.text().split("-");
+    const result = rawCurrentWeek[1].trim();
+
+    return result;
+  }
+
+  private _parseGroupList($: CheerioStatic): GroupList {
+    const year = $(GroupListSelectors.year).val();
+    const semester: Semester = this._parseSemester($);
+    const currentWeek = this._parseCurrentWeek($);
+    const groups: IGroup[] = this._parseGroups($);
     const result: GroupList = {
       year,
       semester,

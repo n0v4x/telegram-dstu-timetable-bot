@@ -14,3 +14,5 @@ export const chunk = <T>(arr: T[], size: number): T[][] => {
 
   return result;
 };
+
+export const last = <T>(arr: T[]): T | undefined => arr[arr.length - 1];
